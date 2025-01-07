@@ -16,49 +16,25 @@ class ANS {
             prepareEncodingTable();
         }
 
-        void mkSymbol(std::string input) {
+        void mkSymbol(const std::string& input) {
+            std::cerr << "\nCOUNTS:\n";
             std::map<int, int> counts;
             for (char c : input) {
                 int digit = c - '0';
                 counts[digit]++;
             }
-            std::cerr << "\nCOUNTS:\n";
             for (const auto& pair : counts) 
-                std::cerr << pair.first << ": " << pair.second << std::endl;
+                std::cerr << "\t" << pair.first << ": " << pair.second << std::endl;
 
-            // Wybór R i obliczenie L
-            R = 4; // chooseOptimalR(input, 0.1); // maxError = 0.01
+            // Dynamiczne obliczenie \( R \) i częstotliwości
+            R = chooseOptimalR(input, 0.1); // maxError = 0.1
             L = std::pow(2, R);
 
-            // Skalowanie częstotliwości
-            int totalFrequency = 0;
-            for (const auto& pair : counts) {
-                int f = std::round(pair.second * L / input.size());
-                if (f == 0) f = 1;  // Upewnij się, że częstotliwość nie jest zerowa
-                frequency[pair.first] = f;
-                totalFrequency += f;
-            }
-
-            // Korekta liczności
-            int delta = L - totalFrequency;
-            while (delta != 0) {
-                for (auto& [key, value] : frequency) {
-                    if (delta == 0) break;
-                    if (delta > 0) {
-                        value++;
-                        delta--;
-                    } else if (value > 1) {
-                        value--;
-                        delta++;
-                    }
-                }
-            }
-
-            // Generowanie symboli
+            // Generowanie symboli na podstawie częstotliwości
             std::vector<int> temp;
-            for (const auto& pair : frequency) {
-                for (int k = 0; k < pair.second; k++) {
-                    temp.push_back(pair.first);
+            for (const auto& [symbol, freq] : frequency) {
+                for (int i = 0; i < freq; ++i) {
+                    temp.push_back(symbol);
                 }
             }
 
@@ -79,94 +55,55 @@ class ANS {
 
 
         int chooseOptimalR(const std::string& input, double maxError) {
-            int numSymbols = frequency.size();
             std::map<int, int> counts;
-
-            // Zliczanie wystąpień symboli
             for (char c : input) {
                 int digit = c - '0';
                 counts[digit]++;
             }
-            int sumFrequency = 0;
+
             for (int R = 4; R <= 16; ++R) {
-                L = std::pow(2, R);
+                int L = std::pow(2, R);
+                frequency.clear();
 
-                //if (L < numSymbols) continue; // Upewnij się, że L >= liczba symboli
-                
-                sumFrequency = 0;
-
+                // Skalowanie częstotliwości
+                int totalFrequency = 0;
                 for (const auto& [symbol, count] : counts) {
-                    int f = std::round(count * L)/input.size();
-                    if (f == 0) f = 1;  // Upewnij się, że częstotliwość nie jest zerowa
+                    int f = std::round(static_cast<double>(count) * L / input.size());
+                    if (f == 0) f = 1;
                     frequency[symbol] = f;
-                    sumFrequency += f;
+                    totalFrequency += f;
                 }
 
-                //std::cerr << "before correction\n";
+                // Korekta liczności
+                int delta = L - totalFrequency;
+                while (delta != 0) {
+                    for (auto& [key, value] : frequency) {
+                        if (delta == 0) break;
+                        if (delta > 0) {
+                            value++;
+                            delta--;
+                        } else if (value > 1) {
+                            value--;
+                            delta++;
+                        }
+                    }
+                }
 
-                // Oblicz błąd odwzorowania
+                // Obliczanie błędu odwzorowania
                 double error = 0.0;
-                for (auto const& pair: frequency) {
-                    double Ps = static_cast<double>(counts[pair.first]) / input.size();
-                    double approxPs = static_cast<double>(frequency[pair.first]) / L;
+                for (const auto& [symbol, count] : counts) {
+                    double Ps = static_cast<double>(count) / input.size();
+                    double approxPs = static_cast<double>(frequency[symbol]) / L;
                     error += std::abs(Ps - approxPs);
                 }
 
                 if (error <= maxError) {
-                    while (sumFrequency < L) {
-                        auto maxElement = std::max_element(frequency.begin(), frequency.end(),
-                                                        [](const auto& a, const auto& b) { return a.second < b.second; });
-                        maxElement->second++;
-                        sumFrequency++;
-                    }
-
-                    while (sumFrequency > L) {
-                        auto minElement = std::min_element(frequency.begin(), frequency.end(),
-                                                        [](const auto& a, const auto& b) { return a.second < b.second; });
-                        if (minElement->second > 1) {
-                            minElement->second--;
-                            sumFrequency--;
-                        }
-                    }
-                    sumFrequency = 0;
-                    for (const auto& [symbol, f] : frequency) {
-                        sumFrequency += f;
-                    }
-                    if (sumFrequency != L) {
-                        std::cerr << "Error: sumFrequency = " << sumFrequency << " but L = " << L << "\n";
-                        exit(EXIT_FAILURE);
-                    }
-                    std::cerr << "counts, len, f_s, L for 2" << counts[2] << ", " << input.size() << ", " << frequency[2]  << ", " << L << std::endl;
                     return R;
                 }
+            }
 
-                
-            }
-                while (sumFrequency < L) {
-                    auto maxElement = std::max_element(frequency.begin(), frequency.end(),
-                                                    [](const auto& a, const auto& b) { return a.second < b.second; });
-                    maxElement->second++;
-                    sumFrequency++;
-                }
-
-                while (sumFrequency > L) {
-                    auto minElement = std::min_element(frequency.begin(), frequency.end(),
-                                                    [](const auto& a, const auto& b) { return a.second < b.second; });
-                    if (minElement->second > 1) {
-                        minElement->second--;
-                        sumFrequency--;
-                    }
-                }
-            sumFrequency = 0;
-            for (const auto& [symbol, f] : frequency) {
-                sumFrequency += f;
-            }
-            if (sumFrequency != L) {
-                std::cerr << "Error: sumFrequency = " << sumFrequency << " but L = " << L << "\n";
-                exit(EXIT_FAILURE);
-            }
-            std::cerr << "counts, len, f_s, L for 2" << counts[2] << ", " << input.size() << ", " << frequency[2]  << ", " << L << std::endl;
-            return 16; // Domyślnie największe R
+            // Jeśli nie znaleziono odpowiedniego \( R \), zwracamy maksymalne \( R \).
+            return 16;
         }
 
         void spread() {
@@ -233,22 +170,15 @@ class ANS {
                 next[pair.first] = pair.second;
             }
 
-            std::cerr << "\nSTART:\n";
-            for(const auto& pair : start) std::cerr << pair << std::endl;
-            std::cerr << "\npreparing encoding table:\n" << std::endl;
+            //std::cerr << "\npreparing encoding table:\n" << std::endl;
             for(int x = L; x < 2*L; x++)
             {
                 //std::cerr << "x = " << x <<  ", L = " << L << std::endl;
                 //std::cerr << symbol[x - L] << std::endl;
                 int s = symbol[x-L];
                 int index = start[s] + (next[s])++;
-                std::cerr << "index: " << index << std::endl;
+                //std::cerr << "index: " << index << std::endl;
                 encodingTable[index] = x;
-            }
-            std::cerr << "\nENCODINGTABLE:\n";
-            for(auto u : encodingTable)
-            {
-                std::cerr << u << std::endl;
             }
 
         }
@@ -288,10 +218,17 @@ class ANS {
             std::cout << "\n\nFREQ:\n";
             for(const auto& pair: frequency)
             {
-                std::cout << pair.first << ": " << pair.second << std::endl;
+                std::cout << "\t" << pair.first << ": " << pair.second << std::endl;
             }
-            std::cout << symbol[symbol.size()-2] << std::endl;
-            std::cout << L << std::endl;
+            std::cerr << "\n\nSTART:\n";
+            for(const auto& pair : start) std::cerr << "\t" << pair << std::endl;
+            std::cerr << "\n\nENCODINGTABLE:\n";
+            for(auto u : encodingTable)
+            {
+                std::cerr << "\t" << u << std::endl;
+            }
+            //std::cout << symbol[symbol.size()-2] << std::endl;
+            std::cout << "\nL = " << L << std::endl;
         }
 
     private:
