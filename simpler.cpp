@@ -10,6 +10,7 @@ class ANS {
     public:
         ANS(std::string IN)
         {
+            INPUT = IN;
             inSize = IN.size();
             mkSymbol(IN);
             mkNb();
@@ -17,15 +18,6 @@ class ANS {
         }
 
         void mkSymbol(const std::string& input) {
-            std::cerr << "\nCOUNTS:\n";
-            std::map<int, int> counts;
-            for (char c : input) {
-                int digit = c - '0';
-                counts[digit]++;
-            }
-            for (const auto& pair : counts) 
-                std::cerr << "\t" << pair.first << ": " << pair.second << std::endl;
-
             // Dynamiczne obliczenie \( R \) i częstotliwości
             R = chooseOptimalR(input, 0.1); // maxError = 0.1
             L = std::pow(2, R);
@@ -55,7 +47,6 @@ class ANS {
 
 
         int chooseOptimalR(const std::string& input, double maxError) {
-            std::map<int, int> counts;
             for (char c : input) {
                 int digit = c - '0';
                 counts[digit]++;
@@ -183,9 +174,17 @@ class ANS {
 
         }
 
-        int useBits(int x, int bit)
-        {
-            return 1;
+        void useBits(int x, int nbBits) {
+            // Wyciągnij nbBits najmniej znaczących bitów
+            int extractedBits = x & ((1 << nbBits) - 1);
+
+            // Tutaj można wykorzystać extractedBits, np. zapisać do strumienia wyjściowego.
+            std::cout << "Extracted bits: " << std::bitset<32>(extractedBits) << " (" << extractedBits << ")\n";
+
+            // Przykład: dodanie do strumienia bitowego (tu tylko symulacja)
+            for (int i = nbBits - 1; i >= 0; --i) {
+                bitStream.push_back((extractedBits >> i) & 1);
+            }
         }
 
         void mkNb()
@@ -205,41 +204,67 @@ class ANS {
             int nbBits = (x + nb[s]) >> r;
             useBits(x, nbBits);
             x = encodingTable[start[s] + (x >> nbBits)];
-            return 0;
+            return x;
+        }
+
+        void encodeString(const std::string& input) {
+            int x = L; // Stan początkowy, zwykle równy \( L \).
+
+            for (char c : input) {
+                int s = c - '0'; // Zamiana znaku na cyfrę
+                x = encode(s, x); // Kodowanie symbolu
+            }
+
+            // Na koniec wypisz zakodowane bity.
+            std::cout << "\nEncoded string in bits:\n";
+            for (int bit : bitStream) {
+                std::cout << bit;
+            }
+            std::cout << std::endl;
         }
 
         void Print()
         {
+            std::cerr << "\nCOUNTS:\n";
+            for (const auto& pair : counts) 
+                std::cerr << "\t" << pair.first << ": " << pair.second << std::endl;
+
             std::cout << "\nSYMBOL:\n";
             for(auto u: symbol)
             {
                 std::cout << u << " ";
             }
+
             std::cout << "\n\nFREQ:\n";
             for(const auto& pair: frequency)
             {
                 std::cout << "\t" << pair.first << ": " << pair.second << std::endl;
             }
+
             std::cerr << "\n\nSTART:\n";
             for(const auto& pair : start) std::cerr << "\t" << pair << std::endl;
+
             std::cerr << "\n\nENCODINGTABLE:\n";
             for(auto u : encodingTable)
             {
                 std::cerr << "\t" << u << std::endl;
             }
-            //std::cout << symbol[symbol.size()-2] << std::endl;
+
             std::cout << "\nL = " << L << std::endl;
         }
 
     private:
         std::map<int, int> frequency;
+        std::map<int, int> counts;
         std::vector<int> encodingTable;
         std::vector<int> start;
         std::vector<int> symbol;
         std::vector<int> nbBits;
         std::vector<int> nb;
         std::vector<int> k;
+        std::vector<int> bitStream;
         int L, R, inSize;
+        std::string INPUT;
 };
 
 
@@ -248,5 +273,6 @@ int main(int argc, char *argv[])
     std::string IN = argv[1];
     std::cout << IN << std::endl;
     ANS a(IN);
-    a.Print();
+    //a.Print();
+    a.encodeString(IN);
 }
