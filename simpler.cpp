@@ -233,7 +233,7 @@ class ANS {
             }*/
             finalState = x;
             std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
-            saveData(OUTPUT, finalState, symbol, "encoded.bin");
+            saveDataCompact(OUTPUT, finalState, symbol, "encoded.bin");
             return OUTPUT;
         }
 
@@ -335,7 +335,7 @@ class ANS {
         std::vector<int> decodeStream() {
             int inState;
             std::string pimpek;
-            loadDataWithBitLength(pimpek, inState, sym, "encoded.bin", L);
+            loadDataCompact(pimpek, inState, sym, "encoded.bin", L);
             std::cout << "Odczytany bitString: " << pimpek << std::endl;
             std::cout << "Odczytany finalState: " << inState << std::endl;
             std::cout << "Odczytany symbol: ";
@@ -432,87 +432,60 @@ class ANS {
 
         int getState() {return finalState;}
 
-        void saveData(const std::string& bitString, int finalState, const std::vector<int>& symbol, const std::string& fileName) {
+        void saveDataCompact(const std::string& bitString, int finalState, const std::vector<int>& symbol, const std::string& fileName) {
             std::ofstream outFile(fileName, std::ios::binary);
             if (!outFile) {
                 std::cerr << "Nie można otworzyć pliku do zapisu." << std::endl;
                 return;
             }
 
-            // Obliczanie długości bitString i paddingu
+            // Zapis długości ciągu bitów
             size_t bitLength = bitString.size();
-            uint8_t padding = (bitLength % 8 == 0) ? 0 : (8 - (bitLength % 8));
+            outFile.write(reinterpret_cast<const char*>(&bitLength), sizeof(bitLength));
 
-            // Uzupełnianie zerami
+            // Obliczanie paddingu i konwersja bitów na bajty
+            uint8_t padding = (bitLength % 8 == 0) ? 0 : (8 - (bitLength % 8));
             std::string paddedBitString = bitString + std::string(padding, '0');
 
-            // Konwersja na bajty
             std::vector<uint8_t> bytes;
             for (size_t i = 0; i < paddedBitString.size(); i += 8) {
                 std::bitset<8> byte(paddedBitString.substr(i, 8));
                 bytes.push_back(static_cast<uint8_t>(byte.to_ulong()));
             }
 
-            // Zapis długości bitów
-            outFile.write(reinterpret_cast<const char*>(&bitLength), sizeof(bitLength));
-
-            // Zapis bajtów
+            // Zapis bitów jako bajty
             outFile.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 
             // Zapis finalState
             outFile.write(reinterpret_cast<const char*>(&finalState), sizeof(finalState));
 
-            // Zapis rozmiaru i elementów symbol
-            int symbolSize = symbol.size();
+            // Zapis rozmiaru symbol
+            uint32_t symbolSize = symbol.size(); // Można użyć mniejszego typu, np. uint16_t, jeśli wektor jest mały
             outFile.write(reinterpret_cast<const char*>(&symbolSize), sizeof(symbolSize));
-            outFile.write(reinterpret_cast<const char*>(symbol.data()), symbolSize * sizeof(int));
+
+            // Zapis cyfr w symbol jako uint8_t
+            for (int digit : symbol) {
+                uint8_t compactDigit = static_cast<uint8_t>(digit);
+                outFile.write(reinterpret_cast<const char*>(&compactDigit), sizeof(compactDigit));
+            }
 
             outFile.close();
-            std::cout << "Dane zostały zapisane do pliku: " << fileName << std::endl;
         }
 
-        void readBitsWithPaddingInfo(const std::string& fileName) {
+
+        void loadDataCompact(std::string& bitString, int& finalState, std::vector<int>& symbol, const std::string& fileName, int& len) {
             std::ifstream inFile(fileName, std::ios::binary);
             if (!inFile) {
                 std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
                 return;
             }
 
-            // Odczyt informacji o liczbie brakujących bitów
-            uint8_t paddingInfo;
-            inFile.read(reinterpret_cast<char*>(&paddingInfo), sizeof(paddingInfo));
-
-            // Odczyt danych binarnych
-            std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
-            inFile.close();
-
-            // Zamiana bajtów na ciąg bitów
-            std::string bitString;
-            for (uint8_t byte : bytes) {
-                for (int i = 7; i >= 0; --i) {
-                    bitString += (byte & (1 << i)) ? '1' : '0';
-                }
-            }
-
-            // Usunięcie dodanych zer
-            bitString.erase(bitString.size() - paddingInfo);
-
-            std::cout << "Odczytany ciąg bitów: " << bitString << std::endl;
-        }
-
-        void loadDataWithBitLength(std::string& bitString, int& finalState, std::vector<int>& symbol, const std::string& fileName, int& len) {
-            std::ifstream inFile(fileName, std::ios::binary);
-            if (!inFile) {
-                std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
-                return;
-            }
-
-            // Odczyt długości bitów
+            // Odczyt długości ciągu bitów
             size_t bitLength;
             inFile.read(reinterpret_cast<char*>(&bitLength), sizeof(bitLength));
 
             // Obliczenie liczby bajtów
-            size_t bitBytesLength = (bitLength + 7) / 8; // zaokrąglone w górę
+            size_t bitBytesLength = (bitLength + 7) / 8;
 
             // Odczyt bajtów
             std::vector<uint8_t> bytes(bitBytesLength);
@@ -524,25 +497,27 @@ class ANS {
                 std::bitset<8> bits(byte);
                 bitString += bits.to_string();
             }
-
-            // Usunięcie paddingu
             bitString.erase(bitString.begin() + bitLength, bitString.end());
 
             // Odczyt finalState
             inFile.read(reinterpret_cast<char*>(&finalState), sizeof(finalState));
 
             // Odczyt rozmiaru symbol
-            int symbolSize;
+            uint32_t symbolSize;
             inFile.read(reinterpret_cast<char*>(&symbolSize), sizeof(symbolSize));
             len = symbolSize;
 
-            // Odczyt elementów symbol
+            // Odczyt cyfr z symbol
             symbol.resize(symbolSize);
-            inFile.read(reinterpret_cast<char*>(symbol.data()), symbolSize * sizeof(int));
+            for (uint32_t i = 0; i < symbolSize; ++i) {
+                uint8_t compactDigit;
+                inFile.read(reinterpret_cast<char*>(&compactDigit), sizeof(compactDigit));
+                symbol[i] = static_cast<int>(compactDigit);
+            }
 
             inFile.close();
-            std::cout << "Dane zostały odczytane z pliku: " << fileName << std::endl;
         }
+
 
     
     private:
@@ -569,8 +544,8 @@ int main(int argc, char *argv[])
     std::string IN = argv[1];
     std::cout << "\n\n\tInput: " << IN << std::endl;
     ANS a;
-    //std::string encoded =  a.encodeString(IN);
-    //std::cout << "\n\tENCODED: " << encoded << std::endl;
+    std::string encoded =  a.encodeString(IN);
+    std::cout << "\n\tENCODED: " << encoded << std::endl;
 
     std::vector<int> decoded;
     decoded = a.decodeStream();
@@ -580,5 +555,5 @@ int main(int argc, char *argv[])
         output += std::to_string(u);
     }
 
-    a.Print();
+    //a.Print();
 }
