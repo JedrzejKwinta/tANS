@@ -5,6 +5,10 @@
 #include <map>
 #include <cmath>
 #include <random>
+#include <string>
+#include <fstream>
+#include <bitset>
+
 
 class ANS {
     public:
@@ -14,8 +18,10 @@ class ANS {
             inSize = IN.size();
             mkSymbol(IN);
             mkNb();
-            prepareEncodingTable();
+            prepareEncodingTable(IN);
         }
+
+        ANS() {}
 
         void mkSymbol(const std::string& input) {
             // Dynamiczne obliczenie \( R \) i częstotliwości
@@ -123,7 +129,11 @@ class ANS {
             symbol = std::move(tempSymbols);  // Przeniesienie do właściwego wektora
         }
 
-        void prepareEncodingTable() {
+        void prepareEncodingTable(std::string IN) {
+            INPUT = IN;
+            inSize = IN.size();
+            mkSymbol(IN);
+            mkNb();
             int r = R + 1;
             L = std::pow(2, R);
             std::vector<int> next(10, -1);
@@ -205,6 +215,7 @@ class ANS {
         }
 
         std::string encodeString(const std::string& input) {
+            prepareEncodingTable(input);
             int x = L; // Stan początkowy, zwykle równy \( L \).
 
             for (char c : input) {
@@ -222,6 +233,7 @@ class ANS {
             }*/
             finalState = x;
             std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
+            saveData(OUTPUT, finalState, symbol, "encoded.bin");
             return OUTPUT;
         }
 
@@ -236,23 +248,27 @@ class ANS {
         void prepareDecodingTable()
         {
             std::vector<int> next(10, -1);
+            std::map<int, int> mapa;
+            for (int c : sym) {
+                mapa[c]++;
+            }
 
-            for (const auto& pair : frequency) {
+            for (const auto& pair : mapa) {
                 next[pair.first] = pair.second;
             }
             decodingTable.resize(L);
 
             std::map<int, int> counters;
-            for(const auto& u: frequency)
+            for(const auto& u: mapa)
             {
                 counters[u.first] = 0;
             }
-
+            
             for(int i = 0; i < L; i++)
             {
                 DecodingEntry t;
-                t.symbol = symbol[i];
-                t.L_s = frequency[t.symbol];
+                t.symbol = sym[i];
+                t.L_s = mapa[t.symbol];
                 //std::cerr << "preparing decoding, symbol[" << i << "]: " << symbol[i] << std::endl;
                 int x = next[t.symbol]++;
                 t.xtmp = t.L_s + counters[t.symbol]++;
@@ -316,17 +332,35 @@ class ANS {
             return x;
         }
 
-        void decodeStream(int initialState) {
+        std::vector<int> decodeStream() {
+            int inState;
+            std::string pimpek;
+            loadDataWithBitLength(pimpek, inState, sym, "encoded.bin", L);
+            std::cout << "Odczytany bitString: " << pimpek << std::endl;
+            std::cout << "Odczytany finalState: " << inState << std::endl;
+            std::cout << "Odczytany symbol: ";
+            for (int s : sym) {
+                std::cout << s << " ";
+            }
+            std::cout << "\nOdczytane L: " << L << std::endl;
+
+            R = std::log2(L);
+
             prepareDecodingTable();
 
-            state = initialState - L;
+            state = inState - L;
 
             bitStream.clear();
 
-            for(auto u: OUTPUT)
+            for(auto u: pimpek)
             {
                 bitStream.push_back(u - '0');
             }
+            
+            for (int s : bitStream) {
+                std::cout << s << " ";
+            }
+            std::cout << std::endl;
 
             while (!bitStream.empty()) {
                 try {
@@ -346,10 +380,11 @@ class ANS {
             std::reverse(decoded.begin(), decoded.end());
             // Dekodowanie zakończone
             std::cout << "\n\tDECODED: ";
-            for (int symbol : decoded) {
-                std::cout << symbol;
+            for (int sym : decoded) {
+                std::cout << sym;
             }
             std::cout << "\n\n" << std::endl;
+            return decoded;
         }
 
 
@@ -360,13 +395,14 @@ class ANS {
                 std::cerr << "\t" << pair.first << ": " << pair.second << std::endl;
             
 
-            std::cout << "\nSYMBOL:\n";
+            */std::cout << "\nSYMBOL:\n";
             for(auto u: symbol)
             {
                 std::cout << u << " ";
             }
+            std::cout << std::endl;/*
 
-            std::cout << "\n\nFREQ:\n";
+            std::cout << "\nFREQ:\n";
             for(const auto& pair: frequency)
             {
                 std::cout << "\t" << pair.first << ": " << pair.second << std::endl;
@@ -379,9 +415,9 @@ class ANS {
             for(auto u : encodingTable)
             {
                 std::cerr << "\t" << u << std::endl;
-            }*/
+            }
 
-            std::cerr << "\n\nDECODINGTABLE:\n";
+            */std::cerr << "\n\nDECODINGTABLE:\n";
             int i = 0;
             for(const auto& triplet: decodingTable)
             {
@@ -395,6 +431,119 @@ class ANS {
         }
 
         int getState() {return finalState;}
+
+        void saveData(const std::string& bitString, int finalState, const std::vector<int>& symbol, const std::string& fileName) {
+            std::ofstream outFile(fileName, std::ios::binary);
+            if (!outFile) {
+                std::cerr << "Nie można otworzyć pliku do zapisu." << std::endl;
+                return;
+            }
+
+            // Obliczanie długości bitString i paddingu
+            size_t bitLength = bitString.size();
+            uint8_t padding = (bitLength % 8 == 0) ? 0 : (8 - (bitLength % 8));
+
+            // Uzupełnianie zerami
+            std::string paddedBitString = bitString + std::string(padding, '0');
+
+            // Konwersja na bajty
+            std::vector<uint8_t> bytes;
+            for (size_t i = 0; i < paddedBitString.size(); i += 8) {
+                std::bitset<8> byte(paddedBitString.substr(i, 8));
+                bytes.push_back(static_cast<uint8_t>(byte.to_ulong()));
+            }
+
+            // Zapis długości bitów
+            outFile.write(reinterpret_cast<const char*>(&bitLength), sizeof(bitLength));
+
+            // Zapis bajtów
+            outFile.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+
+            // Zapis finalState
+            outFile.write(reinterpret_cast<const char*>(&finalState), sizeof(finalState));
+
+            // Zapis rozmiaru i elementów symbol
+            int symbolSize = symbol.size();
+            outFile.write(reinterpret_cast<const char*>(&symbolSize), sizeof(symbolSize));
+            outFile.write(reinterpret_cast<const char*>(symbol.data()), symbolSize * sizeof(int));
+
+            outFile.close();
+            std::cout << "Dane zostały zapisane do pliku: " << fileName << std::endl;
+        }
+
+        void readBitsWithPaddingInfo(const std::string& fileName) {
+            std::ifstream inFile(fileName, std::ios::binary);
+            if (!inFile) {
+                std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
+                return;
+            }
+
+            // Odczyt informacji o liczbie brakujących bitów
+            uint8_t paddingInfo;
+            inFile.read(reinterpret_cast<char*>(&paddingInfo), sizeof(paddingInfo));
+
+            // Odczyt danych binarnych
+            std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(inFile)), std::istreambuf_iterator<char>());
+            inFile.close();
+
+            // Zamiana bajtów na ciąg bitów
+            std::string bitString;
+            for (uint8_t byte : bytes) {
+                for (int i = 7; i >= 0; --i) {
+                    bitString += (byte & (1 << i)) ? '1' : '0';
+                }
+            }
+
+            // Usunięcie dodanych zer
+            bitString.erase(bitString.size() - paddingInfo);
+
+            std::cout << "Odczytany ciąg bitów: " << bitString << std::endl;
+        }
+
+        void loadDataWithBitLength(std::string& bitString, int& finalState, std::vector<int>& symbol, const std::string& fileName, int& len) {
+            std::ifstream inFile(fileName, std::ios::binary);
+            if (!inFile) {
+                std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
+                return;
+            }
+
+            // Odczyt długości bitów
+            size_t bitLength;
+            inFile.read(reinterpret_cast<char*>(&bitLength), sizeof(bitLength));
+
+            // Obliczenie liczby bajtów
+            size_t bitBytesLength = (bitLength + 7) / 8; // zaokrąglone w górę
+
+            // Odczyt bajtów
+            std::vector<uint8_t> bytes(bitBytesLength);
+            inFile.read(reinterpret_cast<char*>(bytes.data()), bitBytesLength);
+
+            // Rekonstrukcja ciągu bitów
+            bitString.clear();
+            for (uint8_t byte : bytes) {
+                std::bitset<8> bits(byte);
+                bitString += bits.to_string();
+            }
+
+            // Usunięcie paddingu
+            bitString.erase(bitString.begin() + bitLength, bitString.end());
+
+            // Odczyt finalState
+            inFile.read(reinterpret_cast<char*>(&finalState), sizeof(finalState));
+
+            // Odczyt rozmiaru symbol
+            int symbolSize;
+            inFile.read(reinterpret_cast<char*>(&symbolSize), sizeof(symbolSize));
+            len = symbolSize;
+
+            // Odczyt elementów symbol
+            symbol.resize(symbolSize);
+            inFile.read(reinterpret_cast<char*>(symbol.data()), symbolSize * sizeof(int));
+
+            inFile.close();
+            std::cout << "Dane zostały odczytane z pliku: " << fileName << std::endl;
+        }
+
     
     private:
         std::map<int, int> frequency;
@@ -408,20 +557,28 @@ class ANS {
         std::vector<int> k;
         std::vector<int> bitStream;
         std::vector<int> decodingStream;
+        std::vector<int> sym;
         std::vector<int> decoded;
         int L, R, inSize, finalState, state;
         std::string INPUT;
         std::string OUTPUT;
 };
 
-
 int main(int argc, char *argv[])
 {
     std::string IN = argv[1];
     std::cout << "\n\n\tInput: " << IN << std::endl;
-    ANS a(IN);
-    std::string encoded =  a.encodeString(IN);
-    std::cout << "\n\tENCODED: " << encoded << std::endl;
-    a.decodeStream(a.getState());
-    //a.Print();
+    ANS a;
+    //std::string encoded =  a.encodeString(IN);
+    //std::cout << "\n\tENCODED: " << encoded << std::endl;
+
+    std::vector<int> decoded;
+    decoded = a.decodeStream();
+    std::string output = "";
+    for(int u: decoded)
+    {
+        output += std::to_string(u);
+    }
+
+    a.Print();
 }
