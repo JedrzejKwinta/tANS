@@ -7,6 +7,7 @@
 #include <random>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <bitset>
 
 
@@ -25,7 +26,7 @@ class ANS {
 
         void mkSymbol(const std::string& input) {
             // Dynamiczne obliczenie \( R \) i częstotliwości
-            R = chooseOptimalR(input, 0.01); // maxError = 0.1
+            R = chooseOptimalR(input, 0.1); // maxError = 0.1
             L = std::pow(2, R);
 
             // Generowanie symboli na podstawie częstotliwości
@@ -59,7 +60,7 @@ class ANS {
                 counts[digit]++;
             }
 
-            for (int R = 4; R <= 16; ++R) {
+            for (int R = 2; R <= 16; ++R) {
                 int L = std::pow(2, R);
                 frequency.clear();
 
@@ -205,23 +206,34 @@ class ANS {
             }
         } 
 
-        int encode(int s, int x)
+        int encode(int s, int x, int r)
         { 
-            int r = R + 1;
             int nbBits = (x + nb[s]) >> r;
             useBits(x, nbBits);
             x = encodingTable[start[s] + (x >> nbBits)];
             return x;
         }
 
-        std::string encodeString(const std::string& input) {
+        std::string encodeString(const std::string& input, std::string FILEN) {
             prepareEncodingTable(input);
             int x = L; // Stan początkowy, zwykle równy \( L \).
-
+            std::cout << "L: " << L <<std::endl;
+            int i = 0;
+            int r = R + 1;
             for (char c : input) {
                 int s = c - '0'; // Zamiana znaku na cyfrę
                 //std::cout << "ENCODING! STATE: " << x << std::endl;
-                int newX = encode(s, x); // Kodowanie symbolu
+                int dots = (i / 30000) % 3 + 1;
+
+        // Wypisz komunikat z odpowiednią liczbą kropek
+                std::cout << "\rKompresowanie";
+                for (int j = 0; j < dots; ++j) {
+                    std::cout << ".";
+                }
+                std::cout << "     ";
+                std::cout << std::flush;
+                i++;
+                int newX = encode(s, x, r); // Kodowanie symbolu
                 x = newX;
                 
             }
@@ -232,8 +244,10 @@ class ANS {
                 std::cout << bit;
             }*/
             finalState = x;
-            std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
-            saveDataCompact(OUTPUT, finalState, symbol, "encoded.bin");
+            //std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
+
+            FILEN = getCompressedFileName(FILEN);
+            saveDataCompressed(OUTPUT, finalState, symbol, FILEN);
             return OUTPUT;
         }
 
@@ -263,7 +277,7 @@ class ANS {
             {
                 counters[u.first] = 0;
             }
-            
+
             for(int i = 0; i < L; i++)
             {
                 DecodingEntry t;
@@ -332,17 +346,17 @@ class ANS {
             return x;
         }
 
-        std::vector<int> decodeStream() {
+        std::vector<int> decodeStream(std::string FILEN) {
             int inState;
             std::string pimpek;
-            loadDataCompact(pimpek, inState, sym, "encoded.bin", L);
-            std::cout << "Odczytany bitString: " << pimpek << std::endl;
-            std::cout << "Odczytany finalState: " << inState << std::endl;
-            std::cout << "Odczytany symbol: ";
-            for (int s : sym) {
+            loadDataCompressed(pimpek, inState, sym, FILEN, L);
+            //std::cout << "Odczytany bitString: " << pimpek << std::endl;
+            //std::cout << "Odczytany finalState: " << inState << std::endl;
+            //std::cout << "Odczytany symbol: ";
+            /*for (int s : sym) {
                 std::cout << s << " ";
-            }
-            std::cout << "\nOdczytane L: " << L << std::endl;
+            }*/
+            //std::cout << "\nOdczytane L: " << L << std::endl;
 
             R = std::log2(L);
 
@@ -357,10 +371,10 @@ class ANS {
                 bitStream.push_back(u - '0');
             }
             
-            for (int s : bitStream) {
+            /*for (int s : bitStream) {
                 std::cout << s << " ";
-            }
-            std::cout << std::endl;
+            }*/
+            //std::cout << std::endl;
 
             while (!bitStream.empty()) {
                 try {
@@ -379,14 +393,52 @@ class ANS {
             }
             std::reverse(decoded.begin(), decoded.end());
             // Dekodowanie zakończone
-            std::cout << "\n\tDECODED: ";
+            /*std::cout << "\n\tDECODED: ";
             for (int sym : decoded) {
                 std::cout << sym;
             }
-            std::cout << "\n\n" << std::endl;
+            std::cout << "\n\n" << std::endl;*/
+            std::string toFile = "";
+            for(int u: decoded)
+            {
+                toFile += std::to_string(u);
+            }
+            std::string OUTFILEN = getDecompressedFileName(FILEN);
+            saveStringToFile(toFile, OUTFILEN);
             return decoded;
         }
 
+        std::string getDecompressedFileName(const std::string& fileName) {
+            std::string newFileName = fileName;
+
+            // Znajdujemy ostatnią kropkę (jeśli istnieje)
+            size_t dotPos = newFileName.find_last_of('.');
+            if (dotPos != std::string::npos) {
+                // Zamieniamy końcówkę
+                newFileName.replace(dotPos, std::string::npos, "_decompressed.txt");
+            } else {
+                // Jeśli brak rozszerzenia, dodajemy końcówkę
+                newFileName += "_decompressed.txt";
+            }
+
+            return newFileName;
+        }
+
+        std::string getCompressedFileName(const std::string& fileName) {
+            std::string newFileName = fileName;
+
+            // Znajdujemy ostatnią kropkę (jeśli istnieje)
+            size_t dotPos = newFileName.find_last_of('.');
+            if (dotPos != std::string::npos) {
+                // Zamieniamy końcówkę
+                newFileName.replace(dotPos, std::string::npos, "_compressed.bin");
+            } else {
+                // Jeśli brak rozszerzenia, dodajemy końcówkę
+                newFileName += "_compressed.bin";
+            }
+
+            return newFileName;
+        }
 
         void Print()
         {
@@ -432,7 +484,7 @@ class ANS {
 
         int getState() {return finalState;}
 
-        void saveDataCompact(const std::string& bitString, int finalState, const std::vector<int>& symbol, const std::string& fileName) {
+        void saveDataCompressed(const std::string& bitString, int finalState, const std::vector<int>& symbol, const std::string& fileName) {
             std::ofstream outFile(fileName, std::ios::binary);
             if (!outFile) {
                 std::cerr << "Nie można otworzyć pliku do zapisu." << std::endl;
@@ -460,20 +512,25 @@ class ANS {
             outFile.write(reinterpret_cast<const char*>(&finalState), sizeof(finalState));
 
             // Zapis rozmiaru symbol
-            uint32_t symbolSize = symbol.size(); // Można użyć mniejszego typu, np. uint16_t, jeśli wektor jest mały
+            uint32_t symbolSize = symbol.size();
             outFile.write(reinterpret_cast<const char*>(&symbolSize), sizeof(symbolSize));
 
-            // Zapis cyfr w symbol jako uint8_t
-            for (int digit : symbol) {
-                uint8_t compactDigit = static_cast<uint8_t>(digit);
-                outFile.write(reinterpret_cast<const char*>(&compactDigit), sizeof(compactDigit));
+            // Zapis cyfr z symbol w formie skompresowanej
+            std::vector<uint8_t> compressedSymbols;
+            for (size_t i = 0; i < symbol.size(); i += 2) {
+                uint8_t compressed = (symbol[i] << 4); // Przesunięcie pierwszej cyfry do wyższych 4 bitów
+                if (i + 1 < symbol.size()) {
+                    compressed |= symbol[i + 1]; // Dodanie drugiej cyfry do niższych 4 bitów
+                }
+                compressedSymbols.push_back(compressed);
             }
+            outFile.write(reinterpret_cast<const char*>(compressedSymbols.data()), compressedSymbols.size());
 
             outFile.close();
+            std::cout << "\n\tDane zostały zapisane do pliku: " << fileName << std::endl;
         }
 
-
-        void loadDataCompact(std::string& bitString, int& finalState, std::vector<int>& symbol, const std::string& fileName, int& len) {
+        void loadDataCompressed(std::string& bitString, int& finalState, std::vector<int>& symbol, const std::string& fileName, int& len) {
             std::ifstream inFile(fileName, std::ios::binary);
             if (!inFile) {
                 std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
@@ -507,18 +564,68 @@ class ANS {
             inFile.read(reinterpret_cast<char*>(&symbolSize), sizeof(symbolSize));
             len = symbolSize;
 
-            // Odczyt cyfr z symbol
-            symbol.resize(symbolSize);
-            for (uint32_t i = 0; i < symbolSize; ++i) {
-                uint8_t compactDigit;
-                inFile.read(reinterpret_cast<char*>(&compactDigit), sizeof(compactDigit));
-                symbol[i] = static_cast<int>(compactDigit);
+            // Odczyt cyfr z symbol w formie skompresowanej
+            size_t compressedSize = (symbolSize + 1) / 2; // Liczba bajtów potrzebnych do przechowania cyfr
+            std::vector<uint8_t> compressedSymbols(compressedSize);
+            inFile.read(reinterpret_cast<char*>(compressedSymbols.data()), compressedSize);
+
+            symbol.clear();
+            for (uint8_t compressed : compressedSymbols) {
+                // Wyodrębnianie pierwszej i drugiej cyfry
+                symbol.push_back((compressed >> 4) & 0x0F); // Wyższe 4 bity
+                if (symbol.size() < symbolSize) {
+                    symbol.push_back(compressed & 0x0F); // Niższe 4 bity
+                }
             }
 
             inFile.close();
+            std::cout << "\n\n\tDane zostały odczytane z pliku: " << fileName << std::endl << std::endl;
         }
 
+        void saveStringToFile(const std::string& data, const std::string& fileName) {
+            std::ofstream outFile(fileName);
+            if (!outFile) {
+                std::cerr << "Nie można otworzyć pliku do zapisu." << std::endl;
+                return;
+            }
 
+            outFile << data; // Zapisujemy dane do pliku
+            outFile.close();
+
+            std::cout << "\n\tDane zostały zapisane do pliku: " << fileName << std::endl << std::endl; 
+        }
+
+        std::string loadStringFromFile(std::string& data, const std::string& fileName) {
+            std::ifstream inFile(fileName);
+            if (!inFile) {
+                std::cerr << "Nie można otworzyć pliku do odczytu." << std::endl;
+                return NULL;
+            }
+
+            std::ostringstream oss;
+            oss << inFile.rdbuf(); // Wczytanie całej zawartości pliku do strumienia
+            data = oss.str();      // Przypisanie zawartości do stringa
+
+            inFile.close();
+
+            std::cout << "Dane zostały odczytane z pliku: " << fileName << std::endl;
+            return oss.str();
+        }
+
+        void EN(std::string F)
+        {
+            std::string I;
+            std::ifstream inFile;
+            inFile.open(F);
+            std::getline(inFile, I);
+            std::cout << "\n\tDane odczytane z pliku: " << F << std::endl << std::endl;
+            encodeString(I, F);
+        }
+
+        void DE(std::string F)
+        {
+            decodeStream(F);
+        }
     
     private:
         std::map<int, int> frequency;
@@ -541,19 +648,21 @@ class ANS {
 
 int main(int argc, char *argv[])
 {
-    std::string IN = argv[1];
-    std::cout << "\n\n\tInput: " << IN << std::endl;
+    std::string MODE = argv[1];
+    std::string INPUT = argv[2];
     ANS a;
-    std::string encoded =  a.encodeString(IN);
-    std::cout << "\n\tENCODED: " << encoded << std::endl;
 
-    std::vector<int> decoded;
-    decoded = a.decodeStream();
-    std::string output = "";
-    for(int u: decoded)
+    switch(MODE[0])
     {
-        output += std::to_string(u);
+        case 'e':
+            a.EN(INPUT);
+            break;
+        case 'd':
+            a.DE(INPUT);
+            break;
+        default:
+            std::cout << "Niepoprawny parametr MODE" <<std::endl;
+            break;
     }
-
     //a.Print();
 }
