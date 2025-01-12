@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <bitset>
+#include <deque>
 
 
 class ANS {
@@ -188,7 +189,12 @@ class ANS {
 
             // Tutaj można wykorzystać extractedBits, np. zapisać do strumienia wyjściowego.
             //std::cout << "Extracted bits: " << std::bitset<32>(extractedBits).to_string().substr(32-nbBits) << " (" << extractedBits << ")\n";
-            OUTPUT = std::bitset<32>(extractedBits).to_string().substr(32-nbBits) + OUTPUT;
+            OUTPUT = std::bitset<32>(extractedBits).to_string().substr(32-nbBits);
+            std::reverse(OUTPUT.begin(), OUTPUT.end());
+            for(char c : OUTPUT)
+            {
+                outputDeque.push_front(c);
+            }
             // Przykład: dodanie do strumienia bitowego (tu tylko symulacja)
         }
 
@@ -244,9 +250,14 @@ class ANS {
             finalState = x;
             //std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
             //std::reverse(OUTPUT.begin(), OUTPUT.end());
+            /*for(auto u: outputDeque)
+                std::cout << u;
+            std::cout << std::endl;*/
+            std::string OUT(outputDeque.begin(), outputDeque.end());
+            //std::cout << OUTPUT << std::endl;
             FILEN = getCompressedFileName(FILEN);
-            saveDataCompressed(OUTPUT, finalState, symbol, FILEN);
-            return OUTPUT;
+            saveDataCompressed(OUT, finalState, symbol, FILEN);
+            return OUT;
         }
 
         struct DecodingEntry {
@@ -636,6 +647,7 @@ class ANS {
         std::vector<int> decodingStream;
         std::vector<int> sym;
         std::vector<int> decoded;
+        std::deque<char> outputDeque;
         int L, R, inSize, finalState, state;
         std::string INPUT;
         std::string OUTPUT;
