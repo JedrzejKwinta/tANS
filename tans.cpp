@@ -11,18 +11,8 @@
 #include <bitset>
 #include <deque>
 
-
 class ANS {
     public:
-        ANS(std::string IN)
-        {
-            INPUT = IN;
-            inSize = IN.size();
-            mkSymbol(IN);
-            mkNb();
-            prepareEncodingTable(IN);
-        }
-
         ANS() {}
 
         void mkSymbol(const std::string& input) {
@@ -113,7 +103,6 @@ class ANS {
             while (std::gcd(step, L) != 1) {
                 ++step;
             }
-            //std::cerr << "witam " << std::gcd(step, L) << " stepujący step: " << step << std::endl;
             // Wstępne wypełnienie symbolami
             std::vector<int> tempSymbols(L, -1);
             std::vector<int> temp;
@@ -221,16 +210,14 @@ class ANS {
             OUTPUT="";
             prepareEncodingTable(input);
             int x = L; // Stan początkowy, zwykle równy \( L \).
-            std::cout << "L: " << L <<std::endl;
+            //std::cout << "L: " << L <<std::endl;
             int i = 0;
             int r = R + 1;
             for (char c : input) {
-                int s = c - '0'; // Zamiana znaku na cyfrę
-                //std::cout << "ENCODING! STATE: " << x << std::endl;
+                int s = c - '0';
                 int dots = (i / 30000) % 3 + 1;
 
-        // Wypisz komunikat z odpowiednią liczbą kropek
-                std::cout << "\rKompresowanie";
+                std::cout << "\r\tKompresowanie";
                 for (int j = 0; j < dots; ++j) {
                     std::cout << ".";
                 }
@@ -241,20 +228,12 @@ class ANS {
                 x = newX;
                 
             }
-
-            // Na koniec wypisz zakodowane bity.
-           /*std::cout << "\n\tEncoded string in bits:\t";
-            for (int bit : bitStream) {
-                std::cout << bit;
-            }*/
             finalState = x;
             //std::cout << "\n\tFinal state: " << x << "\n\n" << std::endl;
-            //std::reverse(OUTPUT.begin(), OUTPUT.end());
             /*for(auto u: outputDeque)
                 std::cout << u;
             std::cout << std::endl;*/
             std::string OUT(outputDeque.begin(), outputDeque.end());
-            //std::cout << OUTPUT << std::endl;
             FILEN = getCompressedFileName(FILEN);
             saveDataCompressed(OUT, finalState, symbol, FILEN);
             return OUT;
@@ -292,7 +271,6 @@ class ANS {
                 DecodingEntry t;
                 t.symbol = sym[i];
                 t.L_s = mapa[t.symbol];
-                //std::cerr << "preparing decoding, symbol[" << i << "]: " << symbol[i] << std::endl;
                 int x = next[t.symbol]++;
                 t.xtmp = t.L_s + counters[t.symbol]++;
                 
@@ -322,33 +300,20 @@ class ANS {
             for(int i = 0; i < bits; i++)
             {
                 output.push_back(bitStream[current]);
-                //bitStream.erase(bitStream.begin());
                 current++;
             }
 
             for (int bit : output) {
                 result = (result << 1) | bit;
             }
-            /*std::cout << "Decoded: ";
-            for(auto u: output)
-            {
-                std::cout << u;
-            }
-            std::cout << ", equals to: " << result << "\nRemaining bitStream:\n";
-            for(auto u: bitStream)
-                std::cout << u;
-            std::cout << std::endl;*/
             return result;
         }
 
         int decode(int state, int& index) {
             int X = state;
             DecodingEntry t = decodingTable[X];
-            //std::cout << "DECODING! STATE: " << X+L << ", nbBits: " << t.nbBits << std::endl;
             useSymbol(t.symbol);
-
             int x = t.newX + readBits(t.nbBits, index);
-            //std::cout << "New state: " << x << std::endl << std::endl;
             return x;
         }
 
@@ -356,36 +321,32 @@ class ANS {
             int inState;
             std::string pimpek;
             loadDataCompressed(pimpek, inState, sym, FILEN, L);
-            //std::cout << "Odczytany bitString: " << pimpek << std::endl;
-            //std::cout << "Odczytany finalState: " << inState << std::endl;
-            //std::cout << "Odczytany symbol: ";
-            /*for (int s : sym) {
-                std::cout << s << " ";
-            }*/
-            //std::cout << "\nOdczytane L: " << L << std::endl;
-
             R = std::log2(L);
-
             prepareDecodingTable();
-
             state = inState - L;
-
             bitStream.clear();
 
             for(auto u: pimpek)
             {
                 bitStream.push_back(u - '0');
             }
-            
-            /*for (int s : bitStream) {
-                std::cout << s << " ";
-            }*/
-            //std::cout << std::endl;
+
             int current =0;
+            int i =0;
             while (current < bitStream.size()) {
                 try {
                     // Dekoduj pojedynczy krok
                     int newState = decode(state, current);
+                    int dots = (i / 30000) % 3 + 1;
+
+                    // Wypisz komunikat z odpowiednią liczbą kropek
+                    std::cout << "\r\tDekompresowanie";
+                    for (int j = 0; j < dots; ++j) {
+                        std::cout << ".";
+                    }
+                    std::cout << "     ";
+                    std::cout << std::flush;
+                    i++;
                     state = newState;
 
                     // Sprawdzanie poprawności zakresu stanu (opcjonalne)
@@ -398,12 +359,6 @@ class ANS {
                 }
             }
             std::reverse(decoded.begin(), decoded.end());
-            // Dekodowanie zakończone
-            /*std::cout << "\n\tDECODED: ";
-            for (int sym : decoded) {
-                std::cout << sym;
-            }
-            std::cout << "\n\n" << std::endl;*/
             std::string toFile = "";
             for(int u: decoded)
             {
