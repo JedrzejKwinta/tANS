@@ -36,12 +36,12 @@ make diff INPUT=nazwa_pliku
 ```
 gdzie nazwa_pliku to nazwa oryginalnego pliku tekstowego.
 
----
+
 
 > [!WARNING]
 > Na potrzeby demonstracji metoda kompresuje tylko pliki zawierające ciągi cyfr - należy się upewnić, że plik nie zawiera innych znaków
 
----
+
 
 ## **Pliki w katalogu**
 
