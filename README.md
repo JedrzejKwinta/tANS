@@ -8,8 +8,6 @@ Program umożliwia:
 2. Dekompresję pliku binarnego (*.bin) do formatu tekstowego (*.txt).
 3. Porównanie oryginalnego pliku z plikiem zdekompresowanym.
 
----
-
 ## **Uruchamianie programu**
 
 Katalog zawiera plik `Makefile` umożliwiający kompilację, uruchamianie oraz czyszczenie środowiska projektu. Obsługa programu przebiega w następujący sposób:
@@ -49,7 +47,6 @@ gdzie nazwa_pliku to nazwa oryginalnego pliku tekstowego.
 * Makefile - Plik makefile umożliwiający kompilację i uruchamianie programu.
 * README.md - Plik z dokumentacją projektu w formacie Markdown.
 
----
 
 ## **Czyszczenie katalogu**
 

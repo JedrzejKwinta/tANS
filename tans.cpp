@@ -10,6 +10,7 @@
 #include <sstream>
 #include <bitset>
 #include <deque>
+#include <chrono>
 
 class ANS {
     public:
@@ -614,17 +615,27 @@ int main(int argc, char *argv[])
     std::string INPUT = argv[2];
     ANS a;
 
-    switch(MODE[0])
-    {
-        case 'c':
-            a.EN(INPUT);
-            break;
-        case 'd':
-            a.DE(INPUT);
-            break;
-        default:
-            std::cout << "Niepoprawny parametr MODE" <<std::endl;
-            break;
+    switch (MODE[0]) {
+    case 'c': {
+        auto start = std::chrono::high_resolution_clock::now();
+        a.EN(INPUT);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        std::cout << "\n\tCzas kompresji: " << duration.count() / 1000 << " ms." << std::endl;
+        break;
     }
+    case 'd': {
+        auto start = std::chrono::high_resolution_clock::now();
+        a.DE(INPUT);
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        std::cout << "\tCzas dekompresji: " << duration.count() / 1000 << " ms." << std::endl;
+        break;
+    }
+    default:
+        std::cout << "Niepoprawny parametr MODE" << std::endl;
+        break;
+}
+
     //a.Print();
 }
