@@ -1,7 +1,7 @@
 .SUFFIXES: .c .cpp .o .x .h
 DIR = $(notdir $(CURDIR))
 SYSNAME = $(shell uname -s)
-NAME1 = ans
+NAME1 = tans
 NAME2 = alg
 NAME3 = simpler
 NAME4 = scaled
@@ -26,27 +26,27 @@ endif
 
 LDLIBS = -lm
 
-INPUT= 
+FILE= 
 MODE=
 PS1=$'\\[\E[0;1;3;38;5;136m\\]blahblah$ \\[\E[m\\]'
 
 CO = g++
 LD = $(CO)
 
-CFLAGS = -std=c++20 -O2
+CFLAGS = -std=c++20 -O3 -flto -Ofast -march=native
 
 AR = ar
 
 ARFLAGS = rsv
 
 %.o: %.cpp
-	$(CO) $(CFLAGS) -c $<
+	@$(CO) $(CFLAGS) -c $<
 
 .PHONY: all
 all: $(EXEC1) $(EXEC2) $(EXEC3)
 
 $(EXEC1): $(OBJS1) 
-	$(LD) -o $@ $(LFLAGS) $^
+	@$(LD) -o $@ $(LFLAGS) $^
 $(EXEC2): $(OBJS2)
 	$(LD) -o $@ $(LFLAGS) $^
 $(EXEC3): $(OBJS3)
@@ -54,15 +54,37 @@ $(EXEC3): $(OBJS3)
 $(EXEC4): $(OBJS4)
 	$(LD) -o $@ $(LFLAGS) $^
 ###############################################################################
-.PHONY: run
+.PHONY: compress
 ###############################################################################
-run: $(EXEC1)
-	@echo '****** RUN ******';
-	./$(EXEC1)
+compress: $(EXEC1)
+		clear;
+	@tput setaf 2;
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+#@echo '--------------------------------------------------------------------------------';
+	@echo '\t\t\t   ***** COMPRESSION ******';
+	@tput setaf 7;
+	@./$(EXEC1) compress $(FILE)
+	@tput setaf 2;
+	@echo '\n\t\t            ****** FINISHED ******';
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+###############################################################################
+.PHONY: decompress
+###############################################################################
+decompress: $(EXEC1)
+		clear;
+	@tput setaf 2;
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+#@echo '--------------------------------------------------------------------------------';
+	@echo '\t\t\t  ***** DECOMPRESSION ******';
+	@tput setaf 7;
+	@./$(EXEC1) decompress $(FILE)
+	@tput setaf 2;
+	@echo '\n\t\t            ****** FINISHED ******';
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
 ###############################################################################
 test: $(EXEC2)
 	@echo '****** TEST ******';
-	./$(EXEC2) $(INPUT)
+	./$(EXEC2) $(FILE)
 ###############################################################################
 simple: $(EXEC3)
 	clear;
@@ -71,7 +93,7 @@ simple: $(EXEC3)
 #@echo '--------------------------------------------------------------------------------';
 	@echo '\t\t\t   ***** COMPRESSION ******';
 	@tput setaf 7;
-	@./$(EXEC3) $(MODE) $(INPUT)
+	@./$(EXEC3) $(MODE) $(FILE)
 	@tput setaf 2;
 	@echo '\n\t\t           ****** FINISHED ******';
 	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
@@ -81,17 +103,17 @@ simple: $(EXEC3)
 diff:
 	@tput setaf 2;
 	@echo '\n';
-	@diff -s $(INPUT).txt $(INPUT)_compressed_decompressed.txt
+	@diff -s $(FILE).txt $(FILE)_compressed_decompressed.txt
 	@echo '\n';
 ###############################################################################
 scaled: $(EXEC4)
 #clear;
 	@echo '\t\t\t   ****** SCALED ******';
-	./$(EXEC4) $(INPUT)
+	./$(EXEC4) $(FILE)
 ###############################################################################
 .PHONY: clean tar
 clean:                                                     
-	rm -f *.o  *~ *.a *.so *.x core core* a.out; rm -rf ${LIB_DIR}
+	@rm -f *.o *.bin *_compressed_decompressed.txt *~ *.a *.so *.x core core* a.out; rm -rf ${LIB_DIR}
 
 tar: clean
 	(cd ../; tar -cvzf $(DIR).tar.gz  $(DIR) )

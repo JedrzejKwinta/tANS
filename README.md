@@ -17,7 +17,7 @@ Katalog zawiera plik `Makefile` umożliwiający kompilację, uruchamianie oraz c
 ### **Kompresja pliku tekstowego**
 Aby uruchomić proces kompresji, wykonaj polecenie w terminalu:
 ```bash
-make run MODE=c INPUT=nazwa_pliku.txt
+make compress FILE=nazwa_pliku.txt
 ```
 gdzie nazwa_pliku.txt to ścieżka do pliku tekstowego, który chcesz skompresować.
 
@@ -25,14 +25,14 @@ gdzie nazwa_pliku.txt to ścieżka do pliku tekstowego, który chcesz skompresow
 
 Aby uruchomić proces dekompresji, wykonaj polecenie:
 ```bash
-make run MODE=d INPUT=nazwa_pliku_compressed.bin
+make decompress FILE=nazwa_pliku_compressed.bin
 ```
 gdzie nazwa_pliku_compressed.bin to ścieżka do wcześniej skompresowanego pliku binarnego.
 
 ### **Porównanie plików**
 Aby porównać oryginalny plik z plikiem zdekompresowanym, użyj polecenia:
 ```bash
-make diff INPUT=nazwa_pliku
+make diff FILE=nazwa_pliku
 ```
 gdzie nazwa_pliku to nazwa oryginalnego pliku tekstowego.
 
