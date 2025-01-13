@@ -616,7 +616,7 @@ int main(int argc, char *argv[])
 
     switch(MODE[0])
     {
-        case 'e':
+        case 'c':
             a.EN(INPUT);
             break;
         case 'd':
