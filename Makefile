@@ -3,7 +3,7 @@ DIR = $(notdir $(CURDIR))
 SYSNAME = $(shell uname -s)
 NAME1 = tans
 NAME2 = alg
-NAME3 = simpler
+NAME3 = charANS
 NAME4 = scaled
 
 EXEC1  = $(NAME1).x
@@ -50,13 +50,13 @@ $(EXEC1): $(OBJS1)
 $(EXEC2): $(OBJS2)
 	$(LD) -o $@ $(LFLAGS) $^
 $(EXEC3): $(OBJS3)
-	$(LD) -o $@ $(LFLAGS) $^
+	@$(LD) -o $@ $(LFLAGS) $^
 $(EXEC4): $(OBJS4)
 	$(LD) -o $@ $(LFLAGS) $^
 ###############################################################################
 .PHONY: compress
 ###############################################################################
-compress: $(EXEC1)
+compressI: $(EXEC1)
 		clear;
 	@tput setaf 2;
 	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
@@ -70,7 +70,7 @@ compress: $(EXEC1)
 ###############################################################################
 .PHONY: decompress
 ###############################################################################
-decompress: $(EXEC1)
+decompressI: $(EXEC1)
 		clear;
 	@tput setaf 2;
 	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
@@ -82,16 +82,43 @@ decompress: $(EXEC1)
 	@echo '\n\t\t            ****** FINISHED ******';
 	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
 ###############################################################################
-test: $(EXEC2)
-	@echo '****** TEST ******';
-	./$(EXEC2) $(FILE)
 ###############################################################################
-simple: $(EXEC3)
-	clear;
+###############################################################################
+compress: $(EXEC3)
+		clear;
 	@tput setaf 2;
 	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
 #@echo '--------------------------------------------------------------------------------';
 	@echo '\t\t\t   ***** COMPRESSION ******';
+	@tput setaf 7;
+	@./$(EXEC3) compress $(FILE)
+	@tput setaf 2;
+	@echo '\n\t\t            ****** FINISHED ******';
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+###############################################################################
+###############################################################################
+decompress: $(EXEC3)
+		clear;
+	@tput setaf 2;
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+#@echo '--------------------------------------------------------------------------------';
+	@echo '\t\t\t  ***** DECOMPRESSION ******';
+	@tput setaf 7;
+	@./$(EXEC3) decompress $(FILE)
+	@tput setaf 2;
+	@echo '\n\t\t            ****** FINISHED ******';
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+###############################################################################
+test: $(EXEC2)
+	@echo '****** TEST ******';
+	./$(EXEC2) $(FILE)
+###############################################################################
+char: $(EXEC3)
+	clear;
+	@tput setaf 2;
+	@printf '%*s\n' $$(tput cols) '' | tr ' ' '-'
+#@echo '--------------------------------------------------------------------------------';
+	@echo '\t\t\t   ***** COMPRESSION CHARS ******';
 	@tput setaf 7;
 	@./$(EXEC3) $(MODE) $(FILE)
 	@tput setaf 2;
